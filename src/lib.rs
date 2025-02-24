@@ -3,10 +3,12 @@ use ark_ff::fields::Field;
 use ark_std::str::FromStr;
 use ark_std::Zero;
 use core::ops::{AddAssign, MulAssign};
+use lazy_static::lazy_static;
+
 
 mod constants;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Constants {
     pub c: Vec<Vec<Fr>>,
     pub m: Vec<Vec<Vec<Fr>>>,
@@ -14,38 +16,40 @@ pub struct Constants {
     pub n_rounds_p: Vec<usize>,
 }
 
-pub fn load_constants() -> Constants {
-    let (c_str, m_str) = constants::constants();
-    let mut c: Vec<Vec<Fr>> = Vec::new();
-    for i in 0..c_str.len() {
-        let mut cci: Vec<Fr> = Vec::new();
-        for j in 0..c_str[i].len() {
-            let b: Fr = Fr::from_str(c_str[i][j]).unwrap();
-            cci.push(b);
-        }
-        c.push(cci);
-    }
-    let mut m: Vec<Vec<Vec<Fr>>> = Vec::new();
-    for i in 0..m_str.len() {
-        let mut mi: Vec<Vec<Fr>> = Vec::new();
-        for j in 0..m_str[i].len() {
-            let mut mij: Vec<Fr> = Vec::new();
-            for k in 0..m_str[i][j].len() {
-                let b: Fr = Fr::from_str(m_str[i][j][k]).unwrap();
-                mij.push(b);
+lazy_static! {
+    static ref POSEIDON_CONSTANTS: Constants = {
+        let (c_str, m_str) = constants::constants();
+        let mut c: Vec<Vec<Fr>> = Vec::new();
+        for i in 0..c_str.len() {
+            let mut cci: Vec<Fr> = Vec::new();
+            for j in 0..c_str[i].len() {
+                let b: Fr = Fr::from_str(c_str[i][j]).unwrap();
+                cci.push(b);
             }
-            mi.push(mij);
+            c.push(cci);
         }
-        m.push(mi);
-    }
-    Constants {
-        c,
-        m,
-        n_rounds_f: 8,
-        n_rounds_p: vec![
-            56, 57, 56, 60, 60, 63, 64, 63, 60, 66, 60, 65, 70, 60, 64, 68,
-        ],
-    }
+        let mut m: Vec<Vec<Vec<Fr>>> = Vec::new();
+        for i in 0..m_str.len() {
+            let mut mi: Vec<Vec<Fr>> = Vec::new();
+            for j in 0..m_str[i].len() {
+                let mut mij: Vec<Fr> = Vec::new();
+                for k in 0..m_str[i][j].len() {
+                    let b: Fr = Fr::from_str(m_str[i][j][k]).unwrap();
+                    mij.push(b);
+                }
+                mi.push(mij);
+            }
+            m.push(mi);
+        }
+        Constants {
+            c,
+            m,
+            n_rounds_f: 8,
+            n_rounds_p: vec![
+                56, 57, 56, 60, 60, 63, 64, 63, 60, 66, 60, 65, 70, 60, 64, 68,
+            ],
+        }
+    };
 }
 
 pub struct Poseidon {
@@ -54,7 +58,7 @@ pub struct Poseidon {
 impl Poseidon {
     pub fn new() -> Poseidon {
         Poseidon {
-            constants: load_constants(),
+            constants: POSEIDON_CONSTANTS.clone(),
         }
     }
     pub fn ark(&self, state: &mut Vec<Fr>, c: &[Fr], it: usize) {
@@ -119,7 +123,7 @@ mod tests {
 
     #[test]
     fn test_load_constants() {
-        let cons = load_constants();
+        let cons = POSEIDON_CONSTANTS.clone();
         assert_eq!(
             cons.c[0][0].to_string(),
             "4417881134626180770308697923359573201005643519861877412381846989312604493735"
